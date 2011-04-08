@@ -1,0 +1,10 @@
+bib2nt
+
+This is a simple python script for converting files in bibtex syntax to RDF n-triple notation.
+No assumption on any schema vocabulary is done, just syntactic conversion.
+
+See usage typing:
+
+$ ./bib2nt.py
+
+
