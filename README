@@ -7,4 +7,6 @@ See usage typing:
 
 $ ./bib2nt.py
 
-
+TODO:
+- Let the user configure the vocabulary namespace
+- Explicit XML datatypes in literal values (advantage?)

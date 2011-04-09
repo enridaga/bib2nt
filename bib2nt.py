@@ -1,5 +1,14 @@
 #! /usr/bin/env python
-
+#
+# Name:    rdf2nt
+#
+# Author:  enridaga - Enrico Daga
+#          http://www.enridaga.net
+#
+# Version: 0.1
+# Last changed: 08/04/2011
+#
+# 
 import sys
 import os
 import glob
@@ -8,15 +17,18 @@ import logging
 
 sys.tracebacklimit = 10000000
 
+# Get the content of a folder
 def get_folder_items(current_folder):
     listing = []
     for item in glob.glob( os.path.join(current_folder, '*') ):
         listing.append(item)
     return listing
 
+# Check if the file is bibtex (ends with .bib)
 def is_bibtex(file):
     return re.match(".*?\.bib$", file)
 
+# Lookup directories for *.bib files
 def start_recursive(path):
     for item in get_folder_items( path ):
         item = os.path.abspath(item)
@@ -33,12 +45,15 @@ def start_recursive(path):
                 logging.debug("Item ignored: "+item)
     return 1
 
+# Start reengineer a file
 def transform(file_name):
-    logging.debug("Transforming file "+file_name)
+    logging.debug("Reengineering file "+file_name)
     file = open(file_name)
     for line in file.readlines():
       parse_bib_line(line.strip())
 
+# Flush the reengineered triples in the output file
+# and initialize the triple memory-store
 def flush_triples():
     global triples
     global out_file
@@ -53,22 +68,25 @@ def flush_triples():
     init()
     return 1
 
+# Adds the triple to the list of triples to bewrite in the output file in the next flush()
 def triple(s, p, o):
     triples.append(  (s,p,o) )
 
+# Prepare an IRI value
 def iri(string):
     return "<" + str(string) + ">"
 
+# This prepare a Literal value
+# TODO - Define XML datatypes for known literals (boring, which is the added value?)
 def literal(string):
     # We try to normalize {} stuff
-    string = re.sub("^[{]+","",string)
-    string = re.sub("[}]+$","",string)
+    # we decide to split the first adn last { one or two
+    string = re.sub("^[{]{1,2}","",string)
+    string = re.sub("[}]{1,2}$","",string)
     # Now we fix the string for the turtle syntax
     if re.search("^.*?[^\\\\][\\\\][^\\\\].*$",string) != None:
       logging.debug("Escaping the \\ symbol: "+string)
-      #print string
       string = re.sub('\\\\','\\\\\\\\',string)
-      #print string
     if re.search("^.*?[\"\n\r].*$",string) != None:
       string = re.sub('"','\"',string)
       string = "\"\"\"" + string + "\"\"\""
@@ -77,14 +95,19 @@ def literal(string):
     else:
       return '"' + string + '"'
 
+# Initialize the task
 def init():
     global triples
     global subject
     global vocabulary_namespace
+    # TODO
+    # Let setup the base vocabulary namespace
+    #
     vocabulary_namespace = "http://bib/term/"
     triples = []
     subject = ""
     
+# Parse a single line of bibtex file
 def parse_bib_line(line):
     global triples
     global subject
@@ -105,12 +128,17 @@ def parse_bib_line(line):
           triple(subject, property, object)
           return 1
         # If it is a property
-        matches = re.match("(?P<property>[^=]+)\=?(?P<value>[^,$]+)",line )
+        matches = re.match("(?P<property>[^=]+)\=?(?P<value>.+)",line )
         if matches != None:
           property = iri( vocabulary_namespace + uni( matches.group('property').strip() ) )
-          value = literal( uni( matches.group('value').strip() ) )
+          # remove ending comma
+          vstring = matches.group('value').strip()
+          #logging.debug("Value catched is : " + vstring )
+          vstring = re.sub("[,]$", "", vstring)
+          value = literal( uni( vstring ) )
           triple(subject, property, value)
 
+# To be sure of unicode output (not sure this is needed)
 def uni(string):
    u = unicode(string, 'utf-8')
    return u.encode('utf-8')
